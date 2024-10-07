@@ -457,7 +457,7 @@ def _docx_to_markdown(raw_content: bytes, filename: str, context: ConversationCo
                         markdown_content += f"{'#'} {block.text}\n\n"
                     else:
                         markdown_content += f"{block.text}\n\n"
-    
+
                     for run in block.runs:
                         image_count += 1
                         image_path = _extract_images_from_run(run, doc, image_folder, image_count)
@@ -476,7 +476,7 @@ def _docx_to_markdown(raw_content: bytes, filename: str, context: ConversationCo
         return raw_content.decode("utf-8", errors="ignore"), markdown_content, extracted_images
     except Exception as e:
         logger.exception(f"Error converting DOCX {filename} to Markdown: {e}")
-        return raw_content.decode("utf-8", errors="ignore"), None, []
+        return raw_content.decode("utf-8", errors="ignore"), "", []
 
 
 def _iter_block_items(parent):
