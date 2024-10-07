@@ -437,6 +437,8 @@ def _docx_to_markdown(raw_content: bytes, filename: str, context: ConversationCo
     try:
         base_name = sanitize_filename(Path(filename).stem)
         image_folder = _get_attachment_storage_path(context) / f"{base_name}_docx_images"
+        # Ensure the entire path exists
+        image_folder.parent.mkdir(parents=True, exist_ok=True)
         image_folder.mkdir(exist_ok=True)
 
         logger.info(f"Converting DOCX {filename} to markdown")
