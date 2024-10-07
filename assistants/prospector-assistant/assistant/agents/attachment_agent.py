@@ -499,7 +499,7 @@ def _iter_block_items(parent):
     else:
         raise ValueError("Expected a Document or _Cell object")
 
-    for child in parent_elm.iterchildren():
+    for child in parent_elm.iterchildren(): # type: ignore
         if isinstance(child, CT_P):
             yield Paragraph(child, parent)
         elif isinstance(child, CT_Tbl):
