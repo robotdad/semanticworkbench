@@ -4,9 +4,16 @@ import logging
 from pathlib import Path
 from typing import Annotated, Any
 
-import docx2txt
-import pdfplumber
+import fitz
+import pymupdf4llm
+from docx import Document
+from docx.document import Document as _Document
+from docx.oxml.table import CT_Tbl
+from docx.oxml.text.paragraph import CT_P
+from docx.table import Table, _Cell
+from docx.text.paragraph import Paragraph
 from openai.types import chat
+from PIL import Image
 from pydantic import BaseModel, Field
 from semantic_workbench_api_model.workbench_model import File
 from semantic_workbench_assistant.assistant_app import (
@@ -54,6 +61,8 @@ class Attachment(BaseModel):
     filename: str
     content: str
     metadata: dict[str, Any]
+    markdown_content: str | None = None
+    extracted_images: list[str] = []
 
 
 # endregion
@@ -77,22 +86,45 @@ class AttachmentAgent:
     ) -> None:
         """
         Create or update an attachment from the given file.
+
+        This method processes the file content, converts it to markdown if applicable,
+        and extracts images from PDF and DOCX files.
+
+        Args:
+            context (ConversationContext): The context of the conversation.
+            file (File): The file to process.
+            metadata (dict[str, Any]): Additional metadata for the attachment.
+
+        Raises:
+            Exception: If there's an error processing the file.
         """
         filename = file.filename
 
-        # get the content of the file and convert it to a string
-        content = await _file_to_str(context, file)
+        try:
+            # get the content of the file and convert it to a string and markdown
+            content, markdown_content, extracted_images = await _file_to_str_and_markdown(context, file)
 
-        # see if there is already an attachment with this filename
-        attachment = read_model(_get_attachment_storage_path(context, filename), Attachment)
-        if attachment:
-            # if there is, update the content
-            attachment.content = content
-        else:
-            # if there isn't, create a new attachment
-            attachment = Attachment(filename=filename, content=content, metadata=metadata)
+            # see if there is already an attachment with this filename
+            attachment = read_model(_get_attachment_storage_path(context, filename), Attachment)
+            if attachment:
+                # if there is, update the content
+                attachment.content = content
+                attachment.markdown_content = markdown_content
+                attachment.extracted_images = extracted_images
+            else:
+                # if there isn't, create a new attachment
+                attachment = Attachment(
+                    filename=filename,
+                    content=content,
+                    metadata=metadata,
+                    markdown_content=markdown_content,
+                    extracted_images=extracted_images,
+                )
 
-        write_model(_get_attachment_storage_path(context, filename), attachment)
+            write_model(_get_attachment_storage_path(context, filename), attachment)
+        except Exception as e:
+            logger.exception(f"Error processing attachment {filename}: {str(e)}")
+            raise
 
     @staticmethod
     def delete_attachment_for_file(context: ConversationContext, file: File) -> None:
@@ -117,6 +149,16 @@ class AttachmentAgent:
         If filenames are provided, only attachments with those filenames will be included.
 
         If ignore_filenames are provided, attachments with those filenames will be excluded.
+
+        This method now includes support for markdown content and extracted images.
+
+        Args:
+            context (ConversationContext): The context of the conversation.
+            filenames (list[str] | None): List of filenames to include. If None, include all.
+            ignore_filenames (list[str] | None): List of filenames to ignore.
+
+        Returns:
+            list[chat.ChatCompletionMessageParam]: List of messages for each attachment.
         """
 
         # get all attachments and exit early if there are none
@@ -135,9 +177,11 @@ class AttachmentAgent:
             if ignore_filenames and attachment.filename in ignore_filenames:
                 continue
 
+            content_to_use = attachment.markdown_content or attachment.content
+
             # if the content is a data URI, include it as an image type within the message content
             # NOTE: newer versions of the API only allow messages with the user role to include images
-            if attachment.content.startswith("data:image/"):
+            if content_to_use.startswith("data:image/"):
                 messages.append({
                     "role": "user",
                     "content": [
@@ -148,7 +192,7 @@ class AttachmentAgent:
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": attachment.content,
+                                "url": content_to_use,
                             },
                         },
                         {
@@ -157,15 +201,42 @@ class AttachmentAgent:
                         },
                     ],
                 })
-                continue
+            else:
+                # otherwise, include the content as text within the message content
+                content_details = f"<{filename_tag}>{attachment.filename}</{filename_tag}><{content_tag}>{content_to_use}</{content_tag}>"
 
-            # otherwise, include the content as text within the message content
-            content_details = f"<{filename_tag}>{attachment.filename}</{filename_tag}><{content_tag}>{attachment.content}</{content_tag}>"
+                messages.append({
+                    "role": "system",
+                    "content": f"<{attachment_tag}>{content_details}</{attachment_tag}>",
+                })
 
-            messages.append({
-                "role": "system",
-                "content": f"<{attachment_tag}>{content_details}</{attachment_tag}>",
-            })
+            # Add extracted images
+            for image_path in attachment.extracted_images:
+                try:
+                    with open(image_path, "rb") as image_file:
+                        image_data = base64.b64encode(image_file.read()).decode("utf-8")
+                        data_uri = f"data:image/png;base64,{image_data}"
+                    messages.append({
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": f"<{attachment_tag}><{filename_tag}>{Path(image_path).name}</{filename_tag}><{image_tag}>",
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": data_uri,
+                                },
+                            },
+                            {
+                                "type": "text",
+                                "text": f"</{image_tag}></{attachment_tag}>",
+                            },
+                        ],
+                    })
+                except Exception as e:
+                    logger.error(f"Error processing extracted image {image_path}: {str(e)}")
 
         return messages
 
@@ -255,37 +326,6 @@ async def _raw_content_from_file(context: ConversationContext, file: File) -> by
     return content
 
 
-def _docx_raw_content_to_str(raw_content: bytes, filename: str) -> str:
-    """
-    Convert the raw content of a DOCX file to text.
-    """
-    try:
-        with io.BytesIO(raw_content) as temp:
-            text = docx2txt.process(temp)
-        return text
-    except Exception as e:
-        message = f"error converting DOCX {filename} to text: {e}"
-        logger.exception(message)
-        raise Exception(message)
-
-
-def _pdf_raw_content_to_str(raw_content: bytes, filename: str) -> str:
-    """
-    Convert the raw content of a PDF file to text.
-    """
-    try:
-        with io.BytesIO(raw_content) as temp:
-            text = ""
-            with pdfplumber.open(temp) as pdf:
-                for page in pdf.pages:
-                    text += page.extract_text()
-        return text
-    except Exception as e:
-        message = f"error converting PDF {filename} to text: {e}"
-        logger.exception(message)
-        raise Exception(message)
-
-
 def _image_raw_content_to_str(raw_content: bytes, filename: str) -> str:
     """
     Convert the raw content of an image file to a data URI.
@@ -313,33 +353,190 @@ def _unknown_raw_content_to_str(raw_content: bytes, filename: str) -> str:
         raise Exception
 
 
-async def _file_to_str(context: ConversationContext, file: File) -> str:
+async def _file_to_str_and_markdown(context: ConversationContext, file: File) -> tuple[str, str | None, list[str]]:
     """
-    Convert the content of the file to a string.
+    Convert the content of the file to a string and markdown (if applicable), and extract images.
+
+    Args:
+        context (ConversationContext): The context of the conversation.
+        file (File): The file to process.
+
+    Returns:
+        tuple[str, str | None, list[str]]: A tuple containing the original content,
+        markdown content (if applicable), and a list of extracted image paths.
     """
     filename = file.filename
     raw_content = await _raw_content_from_file(context, file)
 
-    filename_extension = filename.split(".")[-1]
+    filename_extension = filename.split(".")[-1].lower()
 
-    match filename_extension:
-        # if the file has .docx extension, convert it to text
-        case "docx":
-            content = _docx_raw_content_to_str(raw_content, filename)
+    content = ""
+    markdown_content = None
+    extracted_images = []
 
-        # if the file has .pdf extension, convert it to text
-        case "pdf":
-            content = _pdf_raw_content_to_str(raw_content, filename)
+    logger.info(f"Processing file {filename} with extension {filename_extension}")
 
-        # if the file has an image extension, convert it to a data URI
-        case _ if filename_extension in ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif"]:
-            content = _image_raw_content_to_str(raw_content, filename)
+    if filename_extension == "pdf":
+        content, markdown_content, extracted_images = _pdf_to_markdown(raw_content, filename, context)
+    elif filename_extension == "docx":
+        content, markdown_content, extracted_images = _docx_to_markdown(raw_content, filename, context)
+    elif filename_extension in ["png", "jpg", "jpeg", "gif", "bmp", "tiff", "tif"]:
+        content = _image_raw_content_to_str(raw_content, filename)
+    else:
+        content = _unknown_raw_content_to_str(raw_content, filename)
 
-        # otherwise, try to convert the file to text
-        case _:
-            content = _unknown_raw_content_to_str(raw_content, filename)
+    return content, markdown_content, extracted_images
 
-    return content
+
+def _pdf_to_markdown(raw_content: bytes, filename: str, context: ConversationContext) -> tuple[str, str, list[str]]:
+    """
+    Convert PDF content to markdown and extract images.
+
+    Args:
+        raw_content (bytes): The raw content of the PDF file.
+        filename (str): The name of the file.
+        context (ConversationContext): The context of the conversation.
+
+    Returns:
+        tuple[str, str, list[str]]: A tuple containing the original content,
+        markdown content, and a list of extracted image paths.
+    """
+    try:
+        base_name = sanitize_filename(Path(filename).stem)
+        image_folder = _get_attachment_storage_path(context) / f"{base_name}_pdf_images"
+        # Ensure the entire path exists
+        image_folder.parent.mkdir(parents=True, exist_ok=True)
+        image_folder.mkdir(exist_ok=True)
+
+        logger.info(f"Converting PDF {filename} to markdown")
+        # Create a PyMuPDF document object from the raw content
+        with fitz.open(stream=raw_content, filetype="pdf") as pdf_file:
+            md_text = pymupdf4llm.to_markdown(pdf_file, write_images=True, image_path=str(image_folder), dpi=150)
+
+        extracted_images = list(image_folder.glob("*.png"))
+        logger.info(f"Extracted {len(extracted_images)} images from PDF {filename}")
+        return raw_content.decode("utf-8", errors="ignore"), md_text, [str(img) for img in extracted_images]
+    except Exception as e:
+        logger.exception(f"Error converting PDF {filename} to Markdown: {e}")
+        return raw_content.decode("utf-8", errors="ignore"), None, []
+
+
+def _docx_to_markdown(raw_content: bytes, filename: str, context: ConversationContext) -> tuple[str, str, list[str]]:
+    """
+    Convert DOCX content to markdown and extract images.
+
+    Args:
+        raw_content (bytes): The raw content of the DOCX file.
+        filename (str): The name of the file.
+        context (ConversationContext): The context of the conversation.
+
+    Returns:
+        tuple[str, str, list[str]]: A tuple containing the original content,
+        markdown content, and a list of extracted image paths.
+    """
+    try:
+        base_name = sanitize_filename(Path(filename).stem)
+        image_folder = _get_attachment_storage_path(context) / f"{base_name}_docx_images"
+        image_folder.mkdir(exist_ok=True)
+
+        logger.info(f"Converting DOCX {filename} to markdown")
+        with io.BytesIO(raw_content) as docx_file:
+            doc = Document(docx_file)
+
+        markdown_content = ""
+        extracted_images = []
+        image_count = 0
+
+        for block in _iter_block_items(doc):
+            if isinstance(block, Paragraph):
+                if block.style.name.startswith("Heading"):
+                    level = int(block.style.name[-1])
+                    markdown_content += f"{'#' * level} {block.text}\n\n"
+                elif block.style.name.startswith("Title"):
+                    markdown_content += f"{'#'} {block.text}\n\n"
+                else:
+                    markdown_content += f"{block.text}\n\n"
+
+                for run in block.runs:
+                    image_count += 1
+                    image_path = _extract_images_from_run(run, doc, image_folder, image_count)
+                    if image_path:
+                        extracted_images.append(str(image_path))
+                        markdown_content += f"![Image {image_count}]({image_path})\n\n"
+
+            elif isinstance(block, Table):
+                markdown_table = "| " + " | ".join(cell.text for cell in block.rows[0].cells) + " |\n"
+                markdown_table += "| " + " | ".join("---" for _ in block.rows[0].cells) + " |\n"
+                for row in block.rows[1:]:
+                    markdown_table += "| " + " | ".join(cell.text for cell in row.cells) + " |\n"
+                markdown_content += markdown_table + "\n"
+
+        logger.info(f"Extracted {len(extracted_images)} images from DOCX {filename}")
+        return raw_content.decode("utf-8", errors="ignore"), markdown_content, extracted_images
+    except Exception as e:
+        logger.exception(f"Error converting DOCX {filename} to Markdown: {e}")
+        return raw_content.decode("utf-8", errors="ignore"), None, []
+
+
+def _iter_block_items(parent):
+    """
+    Generate a reference to each paragraph and table child within *parent*,
+    in document order.
+
+    Args:
+        parent: The parent element to iterate over.
+
+    Yields:
+        Either a Paragraph or Table object.
+    """
+    if isinstance(parent, _Document):
+        parent_elm = parent.element.body
+    elif isinstance(parent, _Cell):
+        parent_elm = parent._tc
+    else:
+        raise ValueError("Expected a Document or _Cell object")
+
+    for child in parent_elm.iterchildren():
+        if isinstance(child, CT_P):
+            yield Paragraph(child, parent)
+        elif isinstance(child, CT_Tbl):
+            yield Table(child, parent)
+
+
+def _extract_images_from_run(run, doc, image_folder, image_count):
+    """
+    Extract images from a run in a DOCX file.
+
+    Args:
+        run: The run to extract images from.
+        doc: The Document object.
+        image_folder (Path): The folder to save extracted images.
+        image_count (int): The current image count.
+
+    Returns:
+        Path | None: The path of the extracted image, or None if no image was extracted.
+    """
+    for element in run._r.getchildren():
+        if element.tag.endswith("drawing"):
+            for child in element.iter():
+                if child.tag.endswith("blip"):
+                    embed = child.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
+                    if embed:
+                        image_part = doc.part.related_parts[embed]
+                        image_bytes = image_part.blob
+                        image_filename = f"image_{image_count}.png"
+                        image_path = image_folder / image_filename
+
+                        with Image.open(io.BytesIO(image_bytes)) as img:
+                            img.save(image_path, "PNG")
+
+                        return image_path
+    return None
+
+
+def sanitize_filename(filename):
+    """Replace spaces with underscores in the filename."""
+    return filename.replace(" ", "_")
 
 
 # endregion
