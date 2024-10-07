@@ -449,20 +449,21 @@ def _docx_to_markdown(raw_content: bytes, filename: str, context: ConversationCo
 
         for block in _iter_block_items(doc):
             if isinstance(block, Paragraph):
-                if block.style.name.startswith("Heading"):
-                    level = int(block.style.name[-1])
-                    markdown_content += f"{'#' * level} {block.text}\n\n"
-                elif block.style.name.startswith("Title"):
-                    markdown_content += f"{'#'} {block.text}\n\n"
-                else:
-                    markdown_content += f"{block.text}\n\n"
-
-                for run in block.runs:
-                    image_count += 1
-                    image_path = _extract_images_from_run(run, doc, image_folder, image_count)
-                    if image_path:
-                        extracted_images.append(str(image_path))
-                        markdown_content += f"![Image {image_count}]({image_path})\n\n"
+                if block.style and block.style.name:
+                    if block.style.name.startswith("Heading"):
+                        level = int(block.style.name[-1])
+                        markdown_content += f"{'#' * level} {block.text}\n\n"
+                    elif block.style.name.startswith("Title"):
+                        markdown_content += f"{'#'} {block.text}\n\n"
+                    else:
+                        markdown_content += f"{block.text}\n\n"
+    
+                    for run in block.runs:
+                        image_count += 1
+                        image_path = _extract_images_from_run(run, doc, image_folder, image_count)
+                        if image_path:
+                            extracted_images.append(str(image_path))
+                            markdown_content += f"![Image {image_count}]({image_path})\n\n"
 
             elif isinstance(block, Table):
                 markdown_table = "| " + " | ".join(cell.text for cell in block.rows[0].cells) + " |\n"
