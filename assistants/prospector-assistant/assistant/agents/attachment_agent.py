@@ -418,7 +418,7 @@ def _pdf_to_markdown(raw_content: bytes, filename: str, context: ConversationCon
         return raw_content.decode("utf-8", errors="ignore"), md_text, [str(img) for img in extracted_images]
     except Exception as e:
         logger.exception(f"Error converting PDF {filename} to Markdown: {e}")
-        return raw_content.decode("utf-8", errors="ignore"), None, []
+        return raw_content.decode("utf-8", errors="ignore"), "", []
 
 
 def _docx_to_markdown(raw_content: bytes, filename: str, context: ConversationContext) -> tuple[str, str, list[str]]:
