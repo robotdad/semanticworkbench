@@ -107,9 +107,10 @@ def read_models_in_dir(dir_path: os.PathLike, cls: type[ModelT]) -> Iterator[Mod
         return
 
     for file_path in path.iterdir():
-        value = read_model(file_path, cls)
-        if value is not None:
-            yield value
+        if file_path.is_file():  # Only process files, skip directories
+            value = read_model(file_path, cls)
+            if value is not None:
+                yield value
 
 
 class ModelStorage(Generic[ModelT]):
