@@ -457,15 +457,14 @@ def _docx_to_markdown(raw_content: bytes, filename: str, context: ConversationCo
                         markdown_content += f"{'#' * level} {block.text}\n\n"
                     elif block.style.name.startswith("Title"):
                         markdown_content += f"{'#'} {block.text}\n\n"
-                    else:
-                        markdown_content += f"{block.text}\n\n"
-
-                    for run in block.runs:
-                        image_count += 1
-                        image_path = _extract_images_from_run(run, doc, image_folder, image_count)
-                        if image_path:
-                            extracted_images.append(str(image_path))
-                            markdown_content += f"![Image {image_count}]({image_path})\n\n"
+                else:
+                    markdown_content += f"{block.text}\n\n"
+                for run in block.runs:
+                    image_count += 1
+                    image_path = _extract_images_from_run(run, doc, image_folder, image_count)
+                    if image_path:
+                        extracted_images.append(str(image_path))
+                        markdown_content += f"![Image {image_count}]({image_path})\n\n"
 
             elif isinstance(block, Table):
                 markdown_table = "| " + " | ".join(cell.text for cell in block.rows[0].cells) + " |\n"
@@ -499,7 +498,7 @@ def _iter_block_items(parent):
     else:
         raise ValueError("Expected a Document or _Cell object")
 
-    for child in parent_elm.iterchildren(): # type: ignore
+    for child in parent_elm.iterchildren():  # type: ignore
         if isinstance(child, CT_P):
             yield Paragraph(child, parent)
         elif isinstance(child, CT_Tbl):
