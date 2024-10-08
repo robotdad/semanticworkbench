@@ -457,6 +457,10 @@ def _docx_to_markdown(raw_content: bytes, filename: str, context: ConversationCo
                         markdown_content += f"{'#' * level} {block.text}\n\n"
                     elif block.style.name.startswith("Title"):
                         markdown_content += f"{'#'} {block.text}\n\n"
+                    # paragraph content that had a style applied to it
+                    else:
+                        markdown_content += f"{block.text}\n\n"
+                # paragraph content that had no style applied to it
                 else:
                     markdown_content += f"{block.text}\n\n"
                 for run in block.runs:
@@ -505,7 +509,7 @@ def _iter_block_items(parent):
             yield Table(child, parent)
 
 
-def _extract_images_from_run(run, doc, image_folder, image_count):
+def _extract_images_from_run(run, doc, image_folder, image_count, min_width=250, min_height=250):
     """
     Extract images from a run in a DOCX file.
 
@@ -514,9 +518,11 @@ def _extract_images_from_run(run, doc, image_folder, image_count):
         doc: The Document object.
         image_folder (Path): The folder to save extracted images.
         image_count (int): The current image count.
+        min_width (int): The minimum width of the image to be extracted.
+        min_height (int): The minimum height of the image to be extracted.
 
     Returns:
-        Path | None: The path of the extracted image, or None if no image was extracted.
+        Path | None: The path of the extracted image, or None if no image was extracted or it doesn't meet the size requirements.
     """
     for element in run._r.getchildren():
         if element.tag.endswith("drawing"):
@@ -526,10 +532,13 @@ def _extract_images_from_run(run, doc, image_folder, image_count):
                     if embed:
                         image_part = doc.part.related_parts[embed]
                         image_bytes = image_part.blob
-                        image_filename = f"image_{image_count}.png"
-                        image_path = image_folder / image_filename
 
                         with Image.open(io.BytesIO(image_bytes)) as img:
+                            if img.width < min_width or img.height < min_height:
+                                logger.info(f"Skipping image {image_count} due to size {img.width}x{img.height}")
+                                continue
+                            image_filename = f"image_{image_count}.png"
+                            image_path = image_folder / image_filename
                             img.save(image_path, "PNG")
 
                         return image_path
