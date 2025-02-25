@@ -8,8 +8,20 @@
       "cwd": "${workspaceFolder}",
       "module": "mcp_server.start",
       "args": ["--transport", "sse", "--port", "6066"],
+      //"args": ["--transport", "sse", "--port", "6066", "--allowed-dirs", "${workspaceFolder}"],
       "consoleTitle": "mcp-server-example"
       // "justMyCode": false // Set to false to debug external libraries
+    }
+  ],
+  "compounds": [
+    {
+      "name": "test mcp-server-example",
+      "configurations": [
+        "app: semantic-workbench-app",
+        "service: semantic-workbench-service",
+        "assistants: codespace-assistant",
+        "mcp-servers: mcp-server-example"
+      ]
     }
   ]
 }

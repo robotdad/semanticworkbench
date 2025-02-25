@@ -18,10 +18,10 @@ To create the virtual environment and install dependencies.
 
 Use the VSCode launch configuration, or run manually:
 
-Defaults to stdio transport:
+Defaults to stdio transport (allowed_dirs parameter is required):
 
 ```bash
-uv run -m mcp_server.start
+uv run -m mcp_server.start --allowed-dirs "/path1,/path2"
 ```
 
 For SSE transport:
@@ -30,11 +30,13 @@ For SSE transport:
 uv run -m mcp_server.start --transport sse --port 6066
 ```
 
-The SSE URL is:
+When connecting to the SSE endpoint, the client's URL must include the required `allowed_dirs` parameter:
 
-```bash
-http://127.0.0.1:6066/sse
 ```
+http://127.0.0.1:6066/sse?allowed_dirs=/path1,/path2
+```
+
+If the `allowed_dirs` parameter is not provided in the client's URL, the server will return a 400 error, but the server itself can be started without this parameter.
 
 ## Client Configuration
 
@@ -47,7 +49,7 @@ To use this MCP server in your setup, consider the following configuration:
   "mcpServers": {
     "mcp-server-example": {
       "command": "uv",
-      "args": ["run", "-m", "mcp_server.start"]
+      "args": ["run", "-m", "mcp_server.start", "--allowed-dirs", "/path1,/path2"]
     }
   }
 }
@@ -59,7 +61,20 @@ To use this MCP server in your setup, consider the following configuration:
 {
   "mcpServers": {
     "mcp-server-example": {
-      "command": "http://127.0.0.1:6066/sse",
+      "command": "http://127.0.0.1:6066/sse?allowed_dirs=/path1,/path2",
+      "args": []
+    }
+  }
+}
+```
+
+Note: When using paths with backslashes (Windows), use URL encoding or forward slashes:
+
+```json
+{
+  "mcpServers": {
+    "mcp-server-example": {
+      "command": "http://127.0.0.1:6066/sse?allowed_dirs=C:/Users/username/Desktop,D:/Projects",
       "args": []
     }
   }
