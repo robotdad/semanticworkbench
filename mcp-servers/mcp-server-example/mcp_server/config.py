@@ -16,5 +16,5 @@ def load_required_env_var(env_var_name: str) -> str:
 
 class Settings(BaseSettings):
     log_level: str = log_level
-    allowed_dirs: Optional[str] = None
+    query_param: Optional[str] = None
     

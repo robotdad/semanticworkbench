@@ -27,8 +27,8 @@ def main() -> None:
         help="Port to use for SSE (default is 8000)."
     )
     parse_args.add_argument(
-        "--allowed-dirs",
-        help="Comma-separated list of allowed directories (required for stdio, optional for SSE)"
+        "--query-param",
+        help="Value for the required query parameter (required for stdio, optional for SSE)"
     )
     # Add debug option
     parse_args.add_argument(
@@ -46,22 +46,22 @@ def main() -> None:
     # Create the MCP server
     mcp = create_mcp_server()
 
-    # Handle command-line allowed-dirs parameter
-    if args.allowed_dirs:
-        logger.info(f"Setting allowed_dirs from command line: {args.allowed_dirs}")
-        settings.allowed_dirs = args.allowed_dirs
+    # Handle command-line query-param parameter
+    if args.query_param:
+        logger.info(f"Setting query_param from command line: {args.query_param}")
+        settings.query_param = args.query_param
 
     if args.transport == "sse":
         # For SSE transport
         logger.info(f"Starting SSE server on port {args.port}")
-        logger.info(f"Use http://127.0.0.1:{args.port}/sse?allowed_dirs=path1,path2 to connect")
+        logger.info(f"Use http://127.0.0.1:{args.port}/sse?query_param=example_value to connect")
 
         # Let user know about parameters
-        if args.allowed_dirs:
-            logger.info(f"Default allowed_dirs from command line: {args.allowed_dirs}")
+        if args.query_param:
+            logger.info(f"Default query_param from command line: {args.query_param}")
             logger.info("Note: This can be overridden by the client connection parameter")
         else:
-            logger.info("No default allowed_dirs provided - client must provide it in the connection URL")
+            logger.info("No default query_param provided - client must provide it in the connection URL")
 
         # Set the port in settings
         mcp.settings.port = args.port
@@ -70,15 +70,15 @@ def main() -> None:
         logger.info("Starting SSE server with parameter extraction")
         mcp.run(transport="sse")
     else:
-        # For stdio transport, make sure allowed_dirs is provided
-        if not settings.allowed_dirs:
-            logger.error("allowed_dirs parameter is required for stdio transport")
-            parse_args.error("the --allowed-dirs parameter is required for stdio transport")
+        # For stdio transport, make sure query_param is provided
+        if not settings.query_param:
+            logger.error("query_param parameter is required for stdio transport")
+            parse_args.error("the --query-param parameter is required for stdio transport")
             return
 
         # Run with stdio transport using standard method
         logger.info("Starting with stdio transport")
-        logger.info(f"Using allowed_dirs: {settings.allowed_dirs}")
+        logger.info(f"Using query_param: {settings.query_param}")
         mcp.run(transport="stdio")
 
 

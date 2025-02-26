@@ -27,7 +27,7 @@ http_headers = {}
 def create_mcp_server() -> FastMCP:
     logger.info(f"Creating MCP server: {server_name}")
     logger.info(f"Log level: {settings.log_level}")
-    logger.info(f"Initial allowed_dirs: {settings.allowed_dirs}")
+    logger.info(f"Initial query_param: {settings.query_param}")
 
     # Initialize FastMCP with debug logging
     mcp = FastMCP(name=server_name, log_level=settings.log_level)
@@ -54,15 +54,15 @@ def create_mcp_server() -> FastMCP:
             # Save parameters globally for diagnostics
             query_parameters.update(query_params)
 
-            # Check for allowed_dirs parameter
-            if "allowed_dirs" in query_params:
-                allowed_dirs = query_params["allowed_dirs"]
-                logger.info(f"Setting allowed_dirs from query: {allowed_dirs}")
-                settings.allowed_dirs = allowed_dirs
-            elif not settings.allowed_dirs:
-                logger.error("allowed_dirs parameter required but not provided")
+            # Check for query_param parameter
+            if "query_param" in query_params:
+                param_value = query_params["query_param"]
+                logger.info(f"Setting query_param from URL: {param_value}")
+                settings.query_param = param_value
+            elif not settings.query_param:
+                logger.error("query_param parameter required but not provided")
                 return PlainTextResponse(
-                    "Error: allowed_dirs parameter is required",
+                    "Error: query_param parameter is required",
                     status_code=400
                 )
 
@@ -114,7 +114,7 @@ def create_mcp_server() -> FastMCP:
         config_info = {
             "server_name": server_name,
             "log_level": settings.log_level,
-            "allowed_dirs": settings.allowed_dirs,
+            "query_param": settings.query_param,
             "query_parameters": query_parameters,
             "http_headers": http_headers
         }
