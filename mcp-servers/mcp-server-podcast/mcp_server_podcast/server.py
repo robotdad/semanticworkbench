@@ -14,6 +14,9 @@ from .models import (
     DocumentResource, PodcastResource, AudioResource, ResourceResponse,
     DOCUMENT_SCHEME, PODCAST_SCHEME, AUDIO_SCHEME, VOICES_SCHEME
 )
+from .resources import register_document_resources
+from .services import MCPDocumentProcessor
+from .tools import register_document_tools
 from .utils import ResourceIDManager, ProgressReporter
 
 # Set up logger
@@ -40,37 +43,14 @@ def create_mcp_server() -> FastMCP:
     # Initialize resource ID manager
     resource_manager = ResourceIDManager(settings.mcp_storage_path)
     
+    # Initialize document processor service
+    document_processor = MCPDocumentProcessor(settings, resource_manager)
+    
+    # Register document resources and tools
+    register_document_resources(mcp, document_processor)
+    register_document_tools(mcp, document_processor)
+    
     logger.info(f"Initialized MCP server with storage at {settings.mcp_storage_path}")
-    
-    # Resource handlers
-    
-    @mcp.resource("document://{document_id}")
-    async def get_document(document_id: str) -> Tuple[str, str]:
-        """Retrieve the content of a processed document."""
-        document_path = resource_manager.get_file_path("document", document_id)
-        
-        if not document_path or not document_path.exists():
-            # Try the default location as fallback
-            fallback_path = documents_dir / f"{document_id}.txt"
-            if fallback_path.exists():
-                content = fallback_path.read_text()
-                return content, "text/plain"
-            raise FileNotFoundError(f"Document with ID {document_id} not found")
-            
-        content = document_path.read_text()
-        return content, "text/plain"
-    
-    @mcp.resource("document://{document_id}/metadata")
-    async def get_document_metadata(document_id: str) -> Tuple[str, str]:
-        """Retrieve metadata about a processed document."""
-        # This is a placeholder implementation
-        metadata_path = documents_dir / f"{document_id}.metadata.json"
-        
-        if not metadata_path.exists():
-            raise FileNotFoundError(f"Metadata for document with ID {document_id} not found")
-            
-        metadata = metadata_path.read_text()
-        return metadata, "application/json"
     
     @mcp.resource("podcast://{podcast_id}/script")
     async def get_podcast_script(podcast_id: str) -> Tuple[str, str]:
@@ -156,73 +136,7 @@ def create_mcp_server() -> FastMCP:
     
     # Tool implementations
     
-    @mcp.tool()
-    async def upload_document(document_content: str, document_name: str, document_type: Optional[str] = None, ctx: Context = None) -> str:
-        """Upload a document for podcast generation.
-        
-        Args:
-            document_content (str): Base64-encoded document content
-            document_name (str): Original filename
-            document_type (str, optional): MIME type of the document
-            ctx (Context, optional): MCP context for progress reporting
-            
-        Returns:
-            str: Document ID for the uploaded document
-        """
-        # Initialize progress reporter
-        progress = ProgressReporter(ctx)
-        await progress.report_progress(0, "Starting document upload...")
-        
-        try:
-            # Generate a unique ID for the document
-            document_id = resource_manager.generate_id("document")
-            
-            # Decode the base64 content
-            decoded_content = base64.b64decode(document_content)
-            
-            # Save the document to storage
-            document_path = documents_dir / f"{document_id}.raw"
-            document_path.write_bytes(decoded_content)
-            
-            await progress.report_progress(30, "Document saved, extracting text...")
-            
-            # Create a placeholder text representation
-            # In a real implementation, we would extract text using Document Intelligence
-            text_path = documents_dir / f"{document_id}.txt"
-            text_path.write_text(f"Document content for {document_name}")
-            
-            await progress.report_progress(70, "Text extracted, saving metadata...")
-            
-            # Create placeholder metadata
-            metadata = {
-                "document_id": document_id,
-                "original_name": document_name,
-                "document_type": document_type or "application/octet-stream",
-                "status": "uploaded",
-                "upload_time": str(asyncio.get_event_loop().time()),
-                "page_count": 1  # Placeholder
-            }
-            
-            metadata_path = documents_dir / f"{document_id}.metadata.json"
-            metadata_path.write_text(json.dumps(metadata, indent=2))
-            
-            # Register with resource manager
-            resource_manager.add_mapping(
-                "document", 
-                document_id, 
-                text_path, 
-                metadata
-            )
-            
-            logger.info(f"Document uploaded: {document_id} (original: {document_name})")
-            await progress.report_progress(100, "Document upload complete")
-                
-            return document_id
-            
-        except Exception as e:
-            logger.error(f"Document upload failed: {str(e)}")
-            await progress.report_progress(0, f"Upload failed: {str(e)}")
-            raise
+    # Note: Document tools are now registered via register_document_tools() above
     
     # Placeholder for other tools that will be implemented in later phases
     

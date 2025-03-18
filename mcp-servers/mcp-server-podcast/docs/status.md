@@ -21,23 +21,35 @@ This document tracks the progress of implementing the Podcast MCP Server accordi
 - Adapt the document processor service from Podcastly
 - Implement actual text extraction using Azure Document Intelligence
 
-## Phase 2: Document Upload & Processing 🔄
+## Phase 2: Document Upload & Processing ✅
 
-**Status: IN PROGRESS**
+**Status: COMPLETED**
 
 ### Progress
 - Document upload tool skeleton created
 - Storage structure for uploaded documents defined
+- Document processor service adapter implemented
+- Azure Document Intelligence integration added
+- Document content extraction implemented
+- Document resource handlers created
+
+### Key Features
+- Upload documents with progress reporting
+- Extract text using Azure Document Intelligence
+- Access documents via MCP resources
+- Resource management with unique IDs
+- Error handling and reporting
+
+## Phase 3: Podcast Generation 🔄
+
+**Status: IN PROGRESS**
 
 ### Pending
-- Implement document processor service adapter 
-- Connect to Azure Document Intelligence
-- Add document content extraction
-- Create proper document resource handlers
-
-## Phase 3: Podcast Generation ⏳
-
-**Status: NOT STARTED**
+- Implement OpenAI agent service adapter
+- Implement podcast composer service
+- Create podcast generation tool
+- Add podcast script and segment resources
+- Implement podcast customization options
 
 ## Phase 4: Audio Generation ⏳
 

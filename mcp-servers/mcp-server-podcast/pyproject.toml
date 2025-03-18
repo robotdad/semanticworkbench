@@ -8,7 +8,9 @@ requires-python = ">=3.11"
 dependencies = [
     "mcp>=1.2.1",
     "pydantic-settings>=2.0.0",
-    "python-dotenv>=1.0.0"
+    "python-dotenv>=1.0.0",
+    "azure-ai-documentintelligence>=1.0.0",
+    "azure-core>=1.30.0"
 ]
 
 [project.optional-dependencies]
