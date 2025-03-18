@@ -4,28 +4,28 @@ This directory contains Architecture Decision Records (ADRs) for the Podcast MCP
 
 ## What are ADRs?
 
-Architecture Decision Records (ADRs) are documents that capture an important architectural decision made, along with its context and consequences. They provide a record of the reasoning behind significant architectural choices.
+Architecture Decision Records (ADRs) are documents that capture important architectural decisions made along with their context and consequences.
 
-## ADRs for this project
+Each ADR describes:
+- The architectural decision that was made
+- The context and problem statement
+- The decision drivers and constraints
+- The considered options
+- The resulting decision
+- The consequences of that decision
 
-- [ADR Template](./0000-adr-template.md) - Template for creating new ADRs
+## ADR Index
 
-## Inherited ADRs from Podcastly
+A list of all architecture decisions:
 
-These ADRs from the original Podcastly project are carried forward as architectural guidance:
+- [ADR Template](0000-adr-template.md)
+- [MCP Server Architecture](0001-mcp-server-architecture.md)
 
-- [0001-clean-architecture-with-protocols.md](https://github.com/robotdad/podcast/blob/main/docs/adrs/0001-clean-architecture-with-protocols.md) - Use of Python Protocols for clean architecture
-- [0002-asyncio-first-approach.md](https://github.com/robotdad/podcast/blob/main/docs/adrs/0002-asyncio-first-approach.md) - Asyncio-first approach for concurrency
-- [0003-dependency-injection-pattern.md](https://github.com/robotdad/podcast/blob/main/docs/adrs/0003-dependency-injection-pattern.md) - Use of dependency injection pattern
-- [0004-domain-models-with-dataclasses.md](https://github.com/robotdad/podcast/blob/main/docs/adrs/0004-domain-models-with-dataclasses.md) - Domain models with dataclasses
-- [0005-output-filename-generation.md](https://github.com/robotdad/podcast/blob/main/docs/adrs/0005-output-filename-generation.md) - Output filename generation strategy
-- [0006-azure-managed-identities.md](https://github.com/robotdad/podcast/blob/main/docs/adrs/0006-azure-managed-identities.md) - Use of Azure Managed Identities
-- [0007-speech-services-rest-api.md](https://github.com/robotdad/podcast/blob/main/docs/adrs/0007-speech-services-rest-api.md) - Use of Speech Services REST API
-- [0008-prompt-engineering-approach.md](https://github.com/robotdad/podcast/blob/main/docs/adrs/0008-prompt-engineering-approach.md) - Prompt engineering approach
+## Inherited ADRs
 
-## Creating a new ADR
+The following ADRs are inherited from the original Podcastly project and apply to this project as well:
 
-1. Copy `0000-adr-template.md` to `NNNN-title-with-dashes.md` where `NNNN` is the next number in sequence
-2. Fill in the template with your decision, including context, decision, alternatives considered, and consequences
-3. Update this README.md to add a link to your new ADR
-4. Submit the ADR for review as part of a pull request
+- [Clean Architecture with Protocols](https://github.com/robotdad/podcast/blob/main/docs/adrs/0001-clean-architecture-with-protocols.md)
+- [Asyncio-First Approach](https://github.com/robotdad/podcast/blob/main/docs/adrs/0002-asyncio-first-approach.md)
+- [Dependency Injection Pattern](https://github.com/robotdad/podcast/blob/main/docs/adrs/0003-dependency-injection-pattern.md)
+- [Domain Models with Dataclasses](https://github.com/robotdad/podcast/blob/main/docs/adrs/0004-domain-models-with-dataclasses.md)
