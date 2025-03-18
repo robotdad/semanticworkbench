@@ -63,20 +63,41 @@ This document tracks the progress of implementing the Podcast MCP Server accordi
 - Access podcast content via MCP resources
 - Progress reporting and error handling
 
-## Phase 4: Audio Generation 🔄
+## Phase 4: Audio Generation ✅
+
+**Status: COMPLETED**
+
+### Progress
+- Implemented audio generator service with Azure Speech Services
+- Created audio generation tools:
+  - generate_audio for full podcasts
+  - test_audio for testing voices 
+  - list_voices for voice discovery
+  - get_voice_details for voice information
+- Added audio resources:
+  - Access to full podcast audio
+  - Access to individual segment audio
+  - Access to voice information
+- Implemented voice and style customization
+- Added segment-level audio generation
+
+### Key Features
+- Generate audio from podcast scripts
+- Support for different voices and styles
+- Access to individual segment audio files
+- Voice discovery and selection
+- Progress reporting and error handling
+
+## Phase 5: Prompts & Refinement 🔄
 
 **Status: IN PROGRESS**
 
 ### Pending
-- Implement audio generator service adapter
-- Create audio generation tool
-- Add audio file resources
-- Support voice and style customization
-- Implement segment-level audio generation
-
-## Phase 5: Prompts & Refinement ⏳
-
-**Status: NOT STARTED**
+- Implement guided podcast creation prompts
+- Add voice selection prompts
+- Create customization workflow prompts
+- Refine overall user experience
+- Add documentation and examples
 
 ## Legend
 - ✅ Complete
