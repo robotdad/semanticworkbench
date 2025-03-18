@@ -4,6 +4,18 @@
 
 This document outlines the plan for implementing a Model Context Protocol (MCP) server that provides podcast generation capabilities based on the existing Podcastly CLI application. The MCP server will expose the core functionality of Podcastly through MCP resources, tools, and prompts.
 
+> **CRITICAL: STRICT ADAPTATION APPROACH**
+> 
+> This implementation MUST follow a strict adaptation approach:
+> 
+> - **NO FUNCTIONAL CHANGES**: Preserve the exact functionality of the original Podcastly application
+> - **KEEP EXISTING PROMPTS**: Use the exact same prompt templates from the original application
+> - **MAINTAIN ALGORITHMS**: Keep all processing logic and algorithms identical
+> - **DIRECT MAPPING**: Create 1:1 mappings between CLI commands and MCP capabilities
+> - **MINIMAL ADAPTATION**: Only make changes necessary to adapt to the MCP protocol
+> 
+> The goal is to create an MCP wrapper around the existing application without altering its core behavior or approach. We are NOT redesigning or "improving" the application - we are simply exposing the existing functionality through MCP.
+
 ## Goals
 
 1. Expose Podcastly's podcast generation capabilities through MCP

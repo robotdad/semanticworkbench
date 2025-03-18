@@ -74,9 +74,21 @@ Every time you (the AI assistant) begin a new conversation with a user about thi
 This codebase is designed to provide podcast generation capabilities through the Model Context Protocol (MCP). The goal is to create a server that:
 
 - Exposes podcast generation functionality as MCP resources, tools, and prompts
-- Adapts the existing Podcastly capabilities for use in an MCP context
+- Adapts the existing Podcastly capabilities for use in an MCP context WITHOUT changing functionality
 - Provides a clean, well-documented API for LLM-powered clients
 - Maintains separation of concerns and clean architecture
+
+> **IMPORTANT: STRICT ADAPTATION APPROACH**
+> 
+> This project is a STRICT ADAPTATION of the existing Podcastly application:
+> 
+> - We are ONLY creating an MCP wrapper, not redesigning the application
+> - Original functionality, algorithms, and prompt templates MUST be preserved exactly
+> - Do not attempt to "improve" the existing implementation
+> - Only make changes necessary to fit within the MCP protocol framework
+> - Create direct 1:1 mappings between CLI commands and MCP capabilities
+> 
+> Any suggestions that would change the core functionality or approach should be avoided.
 
 ### Fast-Moving Innovation Environment
 
