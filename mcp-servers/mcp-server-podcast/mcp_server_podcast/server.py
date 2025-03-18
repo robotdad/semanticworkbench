@@ -43,50 +43,20 @@ def create_mcp_server() -> FastMCP:
     # Initialize resource ID manager
     resource_manager = ResourceIDManager(settings.mcp_storage_path)
     
-    # Initialize document processor service
+    # Initialize services
     document_processor = MCPDocumentProcessor(settings, resource_manager)
+    openai_agent = MCPOpenAIAgent(settings, resource_manager, document_processor)
+    podcast_composer = MCPPodcastComposer(settings, openai_agent, resource_manager)
     
-    # Register document resources and tools
+    # Register resources and tools
     register_document_resources(mcp, document_processor)
     register_document_tools(mcp, document_processor)
+    register_podcast_resources(mcp, resource_manager, settings.mcp_storage_path)
+    register_podcast_tools(mcp, openai_agent, podcast_composer)
     
     logger.info(f"Initialized MCP server with storage at {settings.mcp_storage_path}")
     
-    @mcp.resource("podcast://{podcast_id}/script")
-    async def get_podcast_script(podcast_id: str) -> Tuple[str, str]:
-        """Retrieve the full text of a generated podcast script."""
-        # This is a placeholder implementation
-        script_path = podcasts_dir / f"{podcast_id}.txt"
-        
-        if not script_path.exists():
-            raise FileNotFoundError(f"Podcast script with ID {podcast_id} not found")
-            
-        script = script_path.read_text()
-        return script, "text/plain"
-    
-    @mcp.resource("podcast://{podcast_id}/segments")
-    async def get_podcast_segments(podcast_id: str) -> Tuple[str, str]:
-        """Retrieve the individual segments of a podcast."""
-        # This is a placeholder implementation
-        segments_path = podcasts_dir / f"{podcast_id}.segments.json"
-        
-        if not segments_path.exists():
-            raise FileNotFoundError(f"Podcast segments with ID {podcast_id} not found")
-            
-        segments = segments_path.read_text()
-        return segments, "application/json"
-    
-    @mcp.resource("podcast://{podcast_id}/metadata")
-    async def get_podcast_metadata(podcast_id: str) -> Tuple[str, str]:
-        """Retrieve metadata about a generated podcast."""
-        # This is a placeholder implementation
-        metadata_path = podcasts_dir / f"{podcast_id}.metadata.json"
-        
-        if not metadata_path.exists():
-            raise FileNotFoundError(f"Metadata for podcast with ID {podcast_id} not found")
-            
-        metadata = metadata_path.read_text()
-        return metadata, "application/json"
+    # Note: Podcast resources are now registered via register_podcast_resources() above
     
     @mcp.resource("audio://{audio_id}")
     async def get_audio(audio_id: str) -> Tuple[bytes, str]:

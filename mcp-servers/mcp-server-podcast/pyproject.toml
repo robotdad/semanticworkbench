@@ -10,7 +10,8 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
     "azure-ai-documentintelligence>=1.0.0",
-    "azure-core>=1.30.0"
+    "azure-core>=1.30.0",
+    "openai>=1.6.0"
 ]
 
 [project.optional-dependencies]
